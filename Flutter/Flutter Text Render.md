@@ -10,6 +10,8 @@ RenderObjectWidget是一个蓝图。 它包含RenderObject的配置信息，Rend
 
 ![](https://koenig-media.raywenderlich.com/uploads/2019/07/renderobject_types.png)
 
+
+
 猜猜？再过一会，你将从头开始创建你自己的Render Paragraph。我知道，我也等不及了!
 
 
@@ -223,6 +225,38 @@ Element? updateChild(Element? child, Widget? newWidget, Object? newSlot) {
 ```
 
 从这里，您可以(稍微挖掘一下)了解 `LibTxt` 是如何工作的。它基于许多其他库。这里有一些有趣的花边新闻:
+
+* [Minikin](https://github.com/flutter/engine/tree/master/third_party/txt/src/minikin) 负责测量和布局文本。
+* [ICU](https://icu.unicode.org/home) 可以帮助Minikin完成一些事情，比如将文本分成几行。
+* [HarfBuzz](https://www.freedesktop.org/wiki/Software/HarfBuzz/) 帮助Minikin从字体中选择正确的字形。
+* [Skia](https://skia.org/) 将文字和文字装饰画在画布上。
+
+你看得越多，你就越能意识到正确渲染文本的重要性。我甚至没有时间提及行间间距< [interline spacing](https://stackoverflow.com/questions/56799068/what-is-the-strutstyle-in-the-flutter-text-widget)>、grapheme集群<[grapheme clusters](https://stackoverflow.com/questions/54483177/handling-grapheme-clusters-in-dart)>和bidi< [bidi](https://en.wikipedia.org/wiki/Bidirectional_Text)>文本等问题。
+
+您已经深入了解了框架和文本呈现引擎。现在是时候退一步，把这些知识派上用场了。
+
+### Stepping Up Your Game: Building a Custom Text Widget
+
+你现在要做一件你以前可能从未做过的事。将创建一个自定义text widget，但不是像通常那样通过合成，而是通过创建一个渲染对象<render object>，该对象使用可用的最低级别的Flutter绘制文本。
+
+Flutter最初设计的目的不是为了允许开发人员进行自定义文本布局，但Flutter团队反应迅速，愿意做出更改。请密切关注[this GitHub issue](https://github.com/flutter/flutter/issues/35994) 的进展更新。
+
+到目前为止，Steppe Up旅游应用程序看起来还不错，但如果它能支持蒙古语脚本就更好了。传统蒙古语是独特的。是写垂直的。标准的Flutter文本小部件支持水平布局，但我们需要垂直布局，其中行从右向左环绕。
+
+![](https://koenig-media.raywenderlich.com/uploads/2019/08/horiz_vert.png)
+
+
+
+#### 自定义渲染对象
+
+为了更专注于底层的文字布局上，我已经在starter project中集成了widget、render object和一个帮助类。
+
+![](https://koenig-media.raywenderlich.com/uploads/2019/08/included_classes.png)
+
+让我简单解释一下我是怎么做的，以防将来你想制作一个不同的自定义渲染对象<render object>。
+
+* Vertical_text.dart: This is the `VerticalText` widget. I made it by starting with the `RichText` source code. I stripped almost everything out and changed it to `LeafRenderObjectWidget`, which has no children. It creates a `RenderVerticalText` object.
+* 这是`VerticalText` 小部件。我从RichText源代码开始制作它。我剥离了几乎所有内容，并将其更改为LeafRenderObjectWidget，它没有子对象。它创建了一个RenderVerticalText对象。
 
 
 
