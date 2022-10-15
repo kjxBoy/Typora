@@ -255,8 +255,30 @@ Flutter最初设计的目的不是为了允许开发人员进行自定义文本�
 
 让我简单解释一下我是怎么做的，以防将来你想制作一个不同的自定义渲染对象<render object>。
 
-* Vertical_text.dart: This is the `VerticalText` widget. I made it by starting with the `RichText` source code. I stripped almost everything out and changed it to `LeafRenderObjectWidget`, which has no children. It creates a `RenderVerticalText` object.
-* 这是`VerticalText` 小部件。我从RichText源代码开始制作它。我剥离了几乎所有内容，并将其更改为LeafRenderObjectWidget，它没有子对象。它创建了一个RenderVerticalText对象。
+* **vertical_text.dart**: 这是`VerticalText` 小部件。我从RichText源代码开始制作它。我剥离了几乎所有内容，并将其更改为LeafRenderObjectWidget，它没有子对象。它创建了一个RenderVerticalText对象。
+* **render_vertical_text.dart**: 我是通过剥离RenderParagraph并交换宽度和高度来实现这一点的。它使用 `VerticalTextPainter` 代替 `TextPainter`.
+* **vertical_text_painter.dart**: 我从`TextPainter`开始并且去掉了我不需要的一切。我还交换了宽度和高度计算，并删除了对`TextSpan`树复杂样式的支持。
+* **vertical_paragraph_constraints.dart**: 我使用高度而不是宽度作为约束条件。
+* **vertical_paragraph_builder.dart**: 我从`ParagraphBuilder`入手，删除了我不需要的一切，添加默认样式并且使`build`方法返回`VerticalParagraph`而不是`Paragraph`
+* **line_breaker.dart**: 这个类是Minikin [LineBreaker](https://github.com/flutter/engine/blob/a4abfb2333afe16675db0709d18a6e918b0123da/third_party/txt/src/minikin/LineBreaker.cpp)的替代物，Minikin LineBreaker不暴露在Dart。
+
+在接下来的小节中，您将通过测量单词、将它们排成直线并将它们绘制到画布上来完成`VerticalParagraph class`的创建。
+
+### Calculating and Measuring Text Runs
+
+文本需要换行。为此，您需要在字符串中找到可以断行的适当位置。正如我前文所说，在撰写本文时，Flutter还没有公开Minikin/ICU `LineBreaker`类，但是一个可以接受的替代方法是在空格和单词之间中断。
+
+这是应用程序的Unicode欢迎字符串:
+
+```
+ᠤᠷᠭᠡᠨ ᠠᠭᠤᠳᠠᠮ ᠲᠠᠯ᠎ᠠ ᠨᠤᠲᠤᠭ ᠲᠤ ᠮᠢᠨᠢ ᠬᠦᠷᠦᠯᠴᠡᠨ ᠢᠷᠡᠭᠡᠷᠡᠢ
+```
+
+以下是可能的断裂位置:
+
+![](https://koenig-media.raywenderlich.com/uploads/2019/08/runs.png)
+
+我将把中断之间的子字符串称为文本的“运行”。你会用一个`TextRun`类来表示它，你现在会创建它。
 
 
 
