@@ -280,5 +280,224 @@ Flutter最初设计的目的不是为了允许开发人员进行自定义文本�
 
 我将把中断之间的子字符串称为文本的“运行”。你会用一个`TextRun`类来表示它，你现在会创建它。
 
+在**lib/model**文件夹中，创建以**text_run.dart**命名的文件夹，并黏贴下面的代码:
+
+```dart
+import 'dart:ui' as ui show Paragraph;
+
+class TextRun {
+  TextRun(this.start, this.end, this.paragraph);
+
+  // 1
+  int start;
+  int end;
+
+  // 2
+  ui.Paragraph paragraph;
+}
+```
 
 
+
+注释：
+
+1. 这些是文本run子字符串的索引，其中包含`start`包含，不包括`end`。
+2. 您将为每次运行创建一个“段落<paragraph>”，以便获得其测量大小。
+
+在**dartui/vertical_paragraph.dart** 文件中，将下面的代码添加打到**VerticalParagraph**类，记得引用`TextRun`:
+
+```dart
+// 1
+List<TextRun> _runs = [];
+
+void _addRun(int start, int end) {
+
+  // 2
+  final builder = ui.ParagraphBuilder(_paragraphStyle)
+    ..pushStyle(_textStyle)
+    ..addText(_text.substring(start, end));
+  final paragraph = builder.build();
+
+  // 3
+  paragraph.layout(ui.ParagraphConstraints(width: double.infinity));
+
+  final run = TextRun(start, end, paragraph);
+  _runs.add(run);
+}
+```
+
+
+
+值得一提的是:
+
+1. 您将分别存储字符串中的每个单词。
+2. 在构建段落<building the paragraph>之前添加样式和文本。
+3. 在获得测量值之前，必须调用`layout`方法。我将`width`限制设置为无穷大<infinity>，以确保这次运行只有一行。
+
+然后在**_calculateRuns** 方法中，添加如下代码：
+
+```dart
+// 1
+if (_runs.isNotEmpty) {
+  return;
+}
+
+// 2
+final breaker = LineBreaker();
+breaker.text = _text;
+final int breakCount = breaker.computeBreaks();
+final breaks = breaker.breaks;
+
+// 3
+int start = 0;
+int end;
+for (int i = 0; i < breakCount; i++) {
+  end = breaks[i];
+  _addRun(start, end);
+  start = end;
+}
+
+// 4
+end = _text.length;
+if (start < end) {
+  _addRun(start, end);
+}
+```
+
+解释每个部分:
+
+1. 如果已经执行过，则不需要重新计算运行。
+
+2. 这是我在util文件夹中包含的简单的换行符类。`breaks`变量是可能出现换行符的索引位置的列表(数组)，在本例中是在空格和非空格字符之间。
+
+3. 在每个停顿(break)之间从文本中创建一个运行。
+
+4. 捕捉字符串的最后一个词。
+
+测试到目前为止你已经做了什么。您还没有足够的内容在屏幕上显示任何内容，但是在`_layout`方法的末尾添加一个print语句。
+
+```dart
+print("There are ${_runs.length} runs.");
+```
+
+正常运行应用。您应该在Run控制台中看到以下打印输出:
+
+```dart
+There are 8 runs.
+```
+
+很好。这就是你所期望的:
+
+![](https://koenig-media.raywenderlich.com/uploads/2019/08/runs_8.png)
+
+### Laying Out Runs in Lines
+
+现在您需要看看每一行可以容纳多少这样的runs。假设这条线的最大长度可以和下图中的绿色条一样长:
+
+![](https://koenig-media.raywenderlich.com/uploads/2019/08/runs_line.png)
+
+
+
+您可以看到，前三次运行将适合，但第四次需要在新的行上。
+
+要以编程的方式做到这一点，您需要知道每个run的长度。值得庆幸的是，该信息存储在`TextRun`的`paragraph`属性中。
+
+您将创建一个类来保存关于每一行的信息。在lib/model文件夹中，创建一个名为`line_info.dart`的文件。粘贴以下代码:
+
+```dart
+import 'dart:ui';
+
+class LineInfo {
+  LineInfo(this.textRunStart, this.textRunEnd, this.bounds);
+
+  // 1
+  int textRunStart;
+  int textRunEnd;
+
+  // 2
+  Rect bounds;
+}
+```
+
+
+
+对这些属性的注释:
+
+1. 这些`indexes`告诉您这一行包含的`runs`的范围。
+2. 这是这条线的像素大小。您可以使用[TextBox代替，它包含文本方向(从左到右或从右到左)。这个应用程序不使用bidi文本，所以一个简单的`Rect`就足够了。
+
+回到 **dartui/vertical_paragraph.dart**， 在`VerticalParagraph`类中,添加以下代码，记住要导入`LineInfo`:
+
+```dart
+// 1
+List<LineInfo> _lines = [];
+
+// 2
+void _addLine(int start, int end, double width, double height) {
+  final bounds = Rect.fromLTRB(0, 0, width, height);
+  final LineInfo lineInfo = LineInfo(start, end, bounds);
+  _lines.add(lineInfo);
+}
+```
+
+回顾这两个部分：
+
+1. 这个列表的长度将是行数。
+2. 在这一点上，你没有旋转任何东西，所以width和height指的是水平方向。
+
+然后在 **_calculateLineBreaks** 方法中添加以下内容:
+
+```dart
+// 1
+if (_runs.isEmpty) {
+  return;
+}
+
+// 2
+if (_lines.isNotEmpty) {
+  _lines.clear();
+}
+
+// 3
+int start = 0;
+int end;
+double lineWidth = 0;
+double lineHeight = 0;
+for (int i = 0; i < _runs.length; i++) {
+  end = i;
+  final run = _runs[i];
+
+  // 4
+  final runWidth = run.paragraph.maxIntrinsicWidth;
+  final runHeight = run.paragraph.height;
+
+  // 5
+  if (lineWidth + runWidth > maxLineLength) {
+    _addLine(start, end, lineWidth, lineHeight);
+    start = end;
+    lineWidth = runWidth;
+    lineHeight = runHeight;
+  } else {
+    lineWidth += runWidth;
+
+    // 6
+    lineHeight = math.max(lineHeight, run.paragraph.height);
+  }
+}
+
+// 7
+end = _runs.length;
+if (start < end) {
+  _addLine(start, end, lineWidth, lineHeight);
+}
+
+```
+
+
+
+按顺序解释不同部分:
+
+1. 此方法必须在计算运行之后调用。
+
+2. 用不同的约束重新布局这些行是可以的。
+3. 遍历每一次运行，检查测量值。
