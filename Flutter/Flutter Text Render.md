@@ -1,4 +1,15 @@
-[TOC]
+- [Getting Started](#getting-started)
+- [A Journey Through the Framework](#a-journey-through-the-framework)
+- [Stepping in：The Text Widget](#stepping-inthe-text-widget)
+- [Stepping Down: Text Rendering Objects](#stepping-down-text-rendering-objects)
+- [Way Down: Flutter’s Text Engine](#way-down-flutters-text-engine)
+- [Stepping Up Your Game: Building a Custom Text Widget](#stepping-up-your-game-building-a-custom-text-widget)
+  - [自定义渲染对象](#自定义渲染对象)
+- [Calculating and Measuring Text Runs](#calculating-and-measuring-text-runs)
+- [Laying Out Runs in Lines](#laying-out-runs-in-lines)
+- [Setting the size](#setting-the-size)
+- [Painting Text to the Canvas](#painting-text-to-the-canvas)
+- [Where to Go From Here?](#where-to-go-from-here)
 
 你是否曾骑着骆驼走过寂静的戈壁，或在游牧民族的帐篷里品茶?请点击下面的链接，享受这个千载难逢的机会。这是限时优惠，所以现在就行动，门票售完!
 
