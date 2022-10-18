@@ -1,10 +1,34 @@
 [TOC]
 
+你是否曾骑着骆驼走过寂静的戈壁，或在游牧民族的帐篷里品茶?请点击下面的链接，享受这个千载难逢的机会。这是限时优惠，所以现在就行动，门票售完!
+
+只是开玩笑。:]
+
+这不是一个旅游网站，但我将带您踏上激动人心的旅程，到Flutter框架的一个奇异的角落:文本渲染<*text rendering*>。乍一看似乎很简单。只是ABC,对吗?然而，背后隐藏着难以言喻的复杂性。
+
+在本教程结束时，您将:
+
+* 看到widget、element和render objects之间的关系。
+* 探索`Text`和`RichText`小部件<widgets>背后的内容。
+* 制作自己的自定义文本小部件。
+
+### Getting Started
+
+通过点击页面顶部或底部的下载材料按钮来下载启动项目。这次我不是开玩笑说要点击链接。你认为你是通过看电视上的旅游节目，还是通过坐飞机去那里学到更多?最好的办法是下载初始项目，然后继续执行。
+
+
+
+### A Journey Through the Framework
+
+作为Flutter开发人员，您已经非常熟悉`stateless`和`stateful` widgets，但它们不是惟一的。今天您将了解第三种类型`RenderObjectWidget`，以及支持它的Flutter框架的底层类。
+
+下图显示了`Widget`子类，其中蓝色的是我在这节课中最想关注的:
+
+![](https://koenig-media.raywenderlich.com/uploads/2019/07/widget_types.png)
+
+
+
 RenderObjectWidget是一个蓝图。 它包含RenderObject的配置信息，RenderObject完成了所有艰难的hit testing 和绘制UI的工作。
-
-![](https://tva1.sinaimg.cn/large/008vxvgGly1h72sb778pzj310m0fedh4.jpg)
-
-
 
 下面的图展示一些RenderObject的子类.最常见的一个是RenderBox, RenderBox 定义了一个屏幕上的矩形区域用来进行绘制。RenderBox的众多子类之一，RenderParagraph，是Flutter用来绘制文本的工具。
 
@@ -498,6 +522,141 @@ if (start < end) {
 按顺序解释不同部分:
 
 1. 此方法必须在计算运行之后调用。
-
 2. 用不同的约束重新布局这些行是可以的。
 3. 遍历每一次运行，检查测量值。
+4. `paragraph`也有一个`width`属性，但是它是约束宽度，不是测量宽度。由于传入`doble.infinity`作为约束，width是无穷大。调用`maxIntrinsicWidth`或者`longestLine`将会传给你run的测量宽度。更多信息请参见此[链接](https://stackoverflow.com/questions/57083632/what-is-the-meaning-flutters-width-metrics-for-the-paragraph-class)。
+5. 求宽度之和。如果它超过了最大长度，那么开始一个新的行。
+6. 目前，高度总是相同的，但在未来，如果你使用不同的风格为每一个`run`，采取最大将允许所有需要适配的。
+7. 将最后的`runs`添加为最后一行。
+
+通过在`_layout`方法末尾添加另一个`print`语句来测试到目前为止你所做的:
+
+```dart
+print("There are ${_lines.length} lines.");
+```
+
+进行热重启(或者如果需要重新启动应用程序)。您应该看到:
+
+```dart
+There are 3 lines.
+```
+
+
+
+这就是你所期望的，因为在**main.dart**中。这个`VerticalText widget`有300个逻辑像素的限制，这是绿色条的大约长度:
+
+![](https://koenig-media.raywenderlich.com/uploads/2019/08/runs_line_3.png)
+
+
+
+### Setting the size
+
+系统想要知道widget的size，但是您之前没有足够的信息。既然已经测量了线条，那么就可以计算size了。
+
+在**VerticalParagraph**类中，添加下面的代码到**_calculateWidth**方法中：
+
+```dart
+double sum = 0;
+for (LineInfo line in _lines) {
+  sum += line.bounds.height;
+}
+_width = sum;
+```
+
+为什么我说height相加得到width? width是一个对外公开的值。外部用户想到的是旋转(垂直)线。另一方面，height变量是您在内部用于非旋转(水平)线的变量。
+
+固有高度是指如果widget有足够的空间，它希望达到的高度。将以下代码添加到`_calculateintrinsic`方法中:
+
+```dart
+double sum = 0;
+double maxRunWidth = 0;
+for (TextRun run in _runs) {
+  final width = run.paragraph.maxIntrinsicWidth;
+  maxRunWidth = math.max(width, maxRunWidth);
+  sum += width;
+}
+
+// 1
+_minIntrinsicHeight = maxRunWidth;
+
+// 2
+_maxIntrinsicHeight = sum;
+```
+
+下面解释这些编号注释:
+
+1. 如之前所说，由于旋转，height和width进行了交换。您不想任何单词被剪除，所以widget希望达到的最小高度是最长run的长度。
+2. 如果这个widget把所有东西都放在一条长长的垂直线上，这就是它想要达到的高度。
+
+将以下内容添加到`_layout`方法的末尾:
+
+```dart
+print("width=$width height=$height");
+print("min=$minIntrinsicHeight max=$maxIntrinsicHeight");
+```
+
+重新启动APP，你应该会看到类似的内容:
+
+```dart
+width=123.0 height=300.0
+min=126.1953125 max=722.234375
+```
+
+如果这条线是垂直的，那么最小和最大固有高度就是你所期望的:
+
+![](https://koenig-media.raywenderlich.com/uploads/2019/08/runs_line_min_max.png)
+
+### Painting Text to the Canvas
+
+几乎要完成了。现在所剩下的就是绘制<painting>runs.将下面的代码拷贝到**draw**方法中：
+
+```dart
+canvas.save();
+
+// 1
+canvas.translate(offset.dx, offset.dy);
+
+// 2
+canvas.rotate(math.pi / 2);
+
+for (LineInfo line in _lines) {
+
+  // 3
+  canvas.translate(0, -line.bounds.height);
+
+  // 4
+  double dx = 0;
+  for (int i = line.textRunStart; i < line.textRunEnd; i++) {
+
+    // 5
+    canvas.drawParagraph(_runs[i].paragraph, Offset(dx, 0));
+    dx += _runs[i].paragraph.longestLine;
+  }
+}
+
+canvas.restore();
+
+```
+
+按顺序解释各部分:
+
+1. 移动到起始位置。
+2. 将画布旋转90度。旧的顶部现在在右边。
+3. 移到line开始的位置。`y`值是负的，所以它会向上移动每一行，也就是说，在旋转的画布上向右移动。
+4. 每次画一个run(word)
+5. 偏移量是直线上运行的起始位置。
+
+下图显示了文本在三行中运行的顺序:
+
+![](https://koenig-media.raywenderlich.com/uploads/2019/08/runs_line_painted.png)
+
+再次运行应用程序。
+
+Tadaa !漂亮的垂直脚本为我们的旅行应用程序增添了完美的色彩。
+
+<img src="https://koenig-media.raywenderlich.com/uploads/2019/08/final_screenshot.png" style="zoom:50%;" />
+
+### Where to Go From Here?
+
+
+
