@@ -51,19 +51,21 @@
 
 
 
-猜猜？再过一会，你将从头开始创建你自己的Render Paragraph。我知道，我也等不及了!
+猜猜？再过一会，你将从头开始创建你自己的`Render Paragraph`。我知道，我也等不及了!
 
 
 
-如您所知，Flutter中的布局是通过将widgets组合到树中来实现的。在底层实现中有一个相对应的渲染树（render object  tree）。但是widgets和render objects不知道如何进行交互。Widgets不能生成一个render object 树，render objects也不清楚widget 树何时改变。
+如您所知，`Flutter`中的布局是通过将`widgets`组合到树中来实现的。在底层实现中有一个相对应的渲染树（render object tree）。但是widgets和render objects不知道如何进行交互。Widgets不能生成一个render object 树，render objects也不清楚widget 树何时改变。
 
 
 
-这就是elements的作用。有一棵对应的element树，对于widget树上的每一个widget有相应的Element。elements包含widgets和对应的render objects的引用。elements是widgets和render objects(呈现对象) 之间的管理器或者说是中介者。elements知道什么时候去创建render objects，将它们放到树上的什么位置，当有变化时候去更新它们，以及何时从子部件膨胀(创建)新elements。
+这就是**elements**的作用。有一棵对应的element树，对于widget树上的每一个`Widget`有相应的`Element` 。elements包含widgets和对应的render objects的引用。elements是widgets和render objects(呈现对象) 之间的管理器或者说是中介者。`elements`知道什么时候去创建`render objects`，将它们放到树上的什么位置，当有变化时候去更新它们，以及何时从`child widgets`膨胀(创建)新`elements`。
 
 
 
 下图显示了主要的Element子类。每一个widget有一个对应的element，所以你会注意到名字和Widget子类的相似之处。
+
+（ComponentElement --> 组件Element）
 
 
 
@@ -79,7 +81,7 @@
 
 ### Stepping in：The Text Widget
 
-现在，你将深入Flutter的源码，看看widgets、elements和render objects是如何实际使用的。你将跟随Text widget的渲染对象(render object)的创造轨迹，也就是说，`RenderParagraph` 
+现在，你将深入Flutter的源码，看看widgets、elements和render objects是如何实际使用的。你将跟随 `Text` widget的渲染对象(render object)的创造轨迹，也就是说，`RenderParagraph` 
 
 不用担心，我会与你一路相伴。
 
@@ -102,14 +104,14 @@ child: Align(
     Strings.travelMongolia,
 ```
 
-这棵widget树有一个孩子是Text widget 的 Align widget 。当你逐步浏览源代码时，你可以参考下面的图表:
+这棵widget树有一个`Align` widget，它的孩子是`Text` widget。当你逐步浏览源代码时，你可以参考下面的图表:
 
 ![](https://koenig-media.raywenderlich.com/uploads/2019/07/tree.png)
 
 请执行如下步骤：
 
-1. Command-click(或者 Control-click) `Text`  跳转到它的的源码定义. 注意，  `Text`是一个stateless widget.
-2. 向下滚动的 `build`方法。这个方法返回了什么？Surprise！它返回了一个 `RichText`  widget。 事实证明，`Text` 只是 `RichText` 的伪装。
+1. Command-click(或者 Control-click) `Text`  跳转到它的的源码定义. 注意，`Text`是一个stateless widget.
+2. 向下滚动的 `build`方法。这个方法返回了什么？Surprise！它返回了一个`RichText`widget。 事实证明，`Text`只是 `RichText` 的伪装。
 
 3. Command-click `RichText` 进入到它的源码定义。注意到`RichText` 是一个 `MultiChildRenderObjectWidget` . 为什么是*multi*-child ? 在1.7之前的Flutter以前版本中，它实际上曾经是一个`LeafRenderObjectWidget` ，它没有子组件，但现在RichText支持具有[widget spans](https://api.flutter.dev/flutter/widgets/WidgetSpan-class.html)的内联小部件。
 4. 向下滚动到`createRenderObject` 方法, 在这里，这是它创建`RenderParagraph`的地方。
@@ -122,7 +124,7 @@ child: Align(
 
 
 
-您还应该得到下面的堆栈跟踪，其中顶部有这些行. 我在括号中添加了widget或element类型. 最右边的数字参考了下面的评论. 
+您还应该得到下面的堆栈跟踪，其中顶部有这些行. 我在括号中添加了widget或element类型. 最右边的数字参考了下面的讨论. 
 
 ```dart
 RichText.createRenderObject             (RichText)    // 8
@@ -166,7 +168,7 @@ Element? updateChild(Element? child, Widget? newWidget, Object? newSlot) {
 }
 ```
 
-3. 点击 <u>Element.inflateWidget</u>. 膨胀一个widget意味着从它`创建一个element.` 正如您所看到的发生在元素`newChild = newWidget.createElement()`中。此时，您仍然在 `Align` element中，但是你将要进入刚刚膨胀的 `Text` element的`mount`方法。
+3. 点击 <u>Element.inflateWidget</u>. `膨胀一个widget意味着从它创建一个element.` 正如您所看到的发生在元素`newChild = newWidget.createElement()`中。此时，您仍然在 `Align` element中，但是你将要进入刚刚膨胀的 `Text` element的`mount`方法。
 
 ```dart
  @protected
@@ -189,9 +191,32 @@ Element? updateChild(Element? child, Widget? newWidget, Object? newSlot) {
 
 6. 点击 Element.inflateWidget. 这时newWidget是RichText，同时它被用来创建一个`MultiChildRenderObjectElement`.您仍然停留在Text element，但是你将要进入到RichText element的mount方法中。
 
+```dart
+// newWidget : RichText
+Element inflateWidget(Widget newWidget, Object? newSlot) {
+		... 
+		 // newChild -> MultiChildRenderObjectElement
+		 final Element newChild = newWidget.createElement();
+		  newChild.mount(this, newSlot);
+}
+```
+
+
+
+
+
 7. 点击 RenderObjectElement.mount. 你将看到什么？多么美丽的景象：`widget.createRenderObject(this)`.最后，这里是创建 `RenderParagraph` 的地方.参数`this` 是您当前所在的 `MultiChildRenderObjectElement`。
 
+```dart
+void mount(Element? parent, Object? newSlot) {
+    super.mount(parent, newSlot);
+    _renderObject = (widget as RenderObjectWidget).createRenderObject(this);
+}
+```
+
 8. 点击 RichText.createRenderObject. 在这里，你在另一边。请注意，`MultiChildRenderObjectElement` 已重新命名为 `BuildContext`。
+
+
 
 有人累了吗?既然你处在断点，为什么不休息一下，喝点水呢?仍然有很多伟大的事情要看和做。
 
@@ -206,15 +231,19 @@ Element? updateChild(Element? child, Widget? newWidget, Object? newSlot) {
 花几分钟上下滚动 `RenderParagraph` 类. 以下是一些需要注意的事情:
 
 - `RenderParagraph` 继承自 `RenderBox`. 这意味着这个渲染对象的形状是矩形的，并且基于内容有一些固有的宽度和高度。对于render paragraph, 内容是text
-- 它处理点击事件（hit testing）。嘿，孩子们，别打对方!如果你要点击什么，点击render Paragraph。它能承受。
+- 它处理点击事件（hit testing）。嘿，孩子们，别打对方!如果你要打什么，点击render Paragraph。它能承受。
 - `performLayout` 和 `paint` 方法也很有趣。
 
-你是否注意到`RenderParagraph`把它的文本绘制工作交给了一个叫做`TextPainter` 的东西? 在类的顶部附近找到`_textPainter`的定义。让我们离开渲染层<Rendering layer>，到下面的绘画层<Painting layer>。Command-click `TextPainter`。
+你是否注意到`RenderParagraph`把它的文本绘制工作交给了一个叫做`TextPainter`的东西? 在类的顶部附近找到`_textPainter`的定义。让我们离开渲染层<Rendering layer>，到下面的绘画层<Painting layer>。Command-click `TextPainter`。
+
+
 
 花点时间看看风景。
 
-* 有一个重要的成员变量，名为`_paragraph` ，类型为`ui.Paragraph`。ui部分是为来自dart:ui库(Flutter框架的最低级别)的类添加前缀的常用方法。
-*  `layout` 方法非常有趣. 你不能直接实例化`paragraph`. 必须需要使用`ParagraphBuilder` 类去做。它采用适用于整个段落<paragraph>的默认段落样式。这可以通过包含在`TextSpan`树中的样式进一步修改。调用`TextSpan.build()`将这些样式添加到`ParagraphBuilder`对象中。
+
+
+* 有一个重要的成员变量，名为`_paragraph` ，类型为`ui.Paragraph`。`ui`部分是给`dart:ui`库中的类加上前缀的常用方法，`dart:ui`库是最低级别的Flutter框架。
+*  `layout`方法非常有趣. 你不能直接实例化`paragraph`. 必须需要使用`ParagraphBuilder` 类去做。它采用适用于整个段落<paragraph>的默认段落样式。这可以通过包含在`TextSpan`树中的样式进一步修改。调用`TextSpan.build()`将这些样式添加到`ParagraphBuilder`对象中。
 * 你可以看到`paint`方法在这里非常简单。`TextPainter`只是把paragraph交给<u>canvas.drawParagraph()</u>. 如果你Control-click它，你能看到它调用了<u>paragraph._paint</u>方法。
 
 
@@ -232,7 +261,7 @@ Element? updateChild(Element? child, Widget? newWidget, Object? newSlot) {
 
 ### Way Down: Flutter’s Text Engine
 
-离开你的祖国去一个你不会说当地语言的地方可能会有点害怕。但也是刺激的。您将离开Dart之地，访问原生的文字引擎。他们使用C和C++。幸运的是，这里面有很多的英文标志。
+离开你的祖国去一个你不会讲当地语言的地方可能会有点害怕。但也是刺激的。您将离开Dart，访问原生的文字引擎。他们使用C和C++。幸运的是，这里面有很多的英文标志。
 
 你不能在你的IDE中再Command-click，但代码都在GitHub上，作为Flutter仓库<repository>的一部分。该文本引擎称为LibTxt。现在从这个[链接](https://github.com/flutter/engine/tree/master/third_party/txt)去那里。
 
